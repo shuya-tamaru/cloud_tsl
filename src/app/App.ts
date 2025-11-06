@@ -3,7 +3,9 @@ import { ControlsManager } from "./core/ControlManager";
 import { RendererManager } from "./core/RendererManager";
 import { SceneManager } from "./core/SceneManager";
 import { Cloud } from "./gfx/Cloud";
+import { Cloud2 } from "./gfx/Cloud2";
 import { CloudConfig } from "./gfx/cloudConfig";
+import { CloudConfig2 } from "./gfx/cloudConfig2";
 import { Sun } from "./gfx/Sun";
 import { ParamsControls } from "./utils/ParamsControls";
 
@@ -20,8 +22,10 @@ export class App {
   private aspect: number;
 
   private cloud!: Cloud;
-  private sun!: Sun;
   private cloudConfig!: CloudConfig;
+  private cloud2!: Cloud2;
+  private cloudConfig2!: CloudConfig2;
+  private sun!: Sun;
 
   constructor() {
     this.width = window.innerWidth;
@@ -47,19 +51,26 @@ export class App {
       this.rendererManager.renderer.domElement
     );
     this.cloudConfig = new CloudConfig();
-    this.cloud = new Cloud(
+    // this.cloud = new Cloud(
+    //   this.sceneManager.scene,
+    //   this.rendererManager.renderer,
+    //   this.cloudConfig
+    // );
+    this.cloudConfig2 = new CloudConfig2();
+    this.cloud2 = new Cloud2(
       this.sceneManager.scene,
       this.rendererManager.renderer,
-      this.cloudConfig
+      this.cloudConfig2
     );
-    this.sun = new Sun(this.sceneManager.scene, this.cloudConfig);
+    // this.sun = new Sun(this.sceneManager.scene, this.cloudConfig);
 
-    new ParamsControls(this.cloudConfig, this.cloud);
+    // new ParamsControls(this.cloudConfig, this.cloud);
   }
 
   private addObjectsToScene(): void {
-    this.cloud.addToScene();
-    this.sun.addToScene();
+    // this.cloud.addToScene();
+    this.cloud2.addToScene();
+    // this.sun.addToScene();
   }
 
   private handleResize = (): void => {
@@ -81,7 +92,7 @@ export class App {
       this.sceneManager.scene,
       this.cameraManager.camera
     );
-    this.sun.updateLookAt(this.cameraManager.camera.position);
+    // this.sun.updateLookAt(this.cameraManager.camera.position);
   };
 
   private startAnimation(): void {

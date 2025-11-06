@@ -16,7 +16,7 @@ export class ControlsManager {
     this.controls.enableRotate = true;
     this.controls.dampingFactor = 0.25;
     this.controls.minDistance = 0.1;
-    this.controls.maxDistance = 500;
+    this.controls.maxDistance = 5000; // カメラのfar値に合わせる
   }
 
   public update() {

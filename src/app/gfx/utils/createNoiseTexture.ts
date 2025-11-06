@@ -25,10 +25,10 @@ export function createNoiseTexture(
   size = 64,
   cellCount = 6,
   frequencies: Frequencies = {
-    freq1: uniform(2.0),
-    freq2: uniform(8.0),
-    freq3: uniform(20),
-    freq4: uniform(1),
+    freq1: uniform(4.0),
+    freq2: uniform(4.0),
+    freq3: uniform(8),
+    freq4: uniform(20),
   }
 ) {
   const slices = cellCount * cellCount;
@@ -66,14 +66,13 @@ export function createNoiseTexture(
       float(slice).div(slices) // z座標 (0-1)
     );
 
-    // const r = mx_worley_noise_float(pt.mul(freq1)); // 大きな構造
-    // const g = mx_worley_noise_float(pt.mul(freq2)); // 中規模の詳細
-    // const b = mx_worley_noise_float(pt.mul(freq3)); // 小さな詳細
-    // const a = mx_noise_float(pt.mul(freq4)); // 最細部
-    const r = float(1.0).sub(mx_worley_noise_float(pt.mul(freq1))); // 大きな構造
+    const perlin = mx_noise_float(pt.mul(40));
+    const worley = mx_worley_noise_float(pt.mul(10));
+
+    const r = perlin.mul(0.5).add(float(1.0).sub(worley).mul(0.5)); // 大きな構造
     const g = float(1.0).sub(mx_worley_noise_float(pt.mul(freq2))); // 中規模の詳細
-    const b = float(1.0).sub(mx_noise_float(pt.mul(freq3))); // 小さな詳細
-    const a = float(1.0).sub(mx_noise_float(pt.mul(freq4))); // 最細部
+    const b = float(1.0).sub(mx_worley_noise_float(pt.mul(freq3))); // 小さな詳細
+    const a = float(1.0).sub(mx_worley_noise_float(pt.mul(freq4))); // 最細部
 
     const color = vec4(r, g, b, a);
     textureStore(storageTexture, indexUV, color).toWriteOnly();

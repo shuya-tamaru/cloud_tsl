@@ -4,7 +4,7 @@ export class CameraManager {
   public camera: THREE.PerspectiveCamera;
 
   constructor(aspect: number) {
-    this.camera = new THREE.PerspectiveCamera(45, aspect, 0.1, 2000);
+    this.camera = new THREE.PerspectiveCamera(45, aspect, 0.1, 5000); // Skyの描画範囲を確保
     this.setInitialPosition();
   }
 
@@ -18,7 +18,7 @@ export class CameraManager {
     if (isMobile) {
       this.camera.position.set(212, -245, 107.6);
     } else {
-      this.camera.position.set(212, -245, 107.6);
+      this.camera.position.set(-1000, 900, -1500);
     }
   }
 

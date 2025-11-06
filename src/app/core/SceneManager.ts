@@ -5,7 +5,7 @@ export class SceneManager {
 
   constructor() {
     this.scene = new THREE.Scene();
-    this.scene.background = new THREE.Color("#fff");
+    this.scene.background = null; // Skyで背景を描画するためnullに
     this.createSky();
   }
 
@@ -16,18 +16,27 @@ export class SceneManager {
 
     const context = canvas.getContext("2d");
     if (context) {
-      const gradient = context!.createLinearGradient(0, 0, 0, 100);
-      gradient.addColorStop(0.0, "#87CEEB");
-      gradient.addColorStop(1.0, "#1E90FF");
+      const gradient = context!.createLinearGradient(0, 0, 0, 32);
+      gradient.addColorStop(0.0, "#87CEEB"); // 明るい空色（上部）
+      gradient.addColorStop(0.5, "#5B9BD5"); // 中間
+      gradient.addColorStop(1.0, "#4682B4"); // 青（下部）
       context!.fillStyle = gradient;
-      context!.fillRect(0, 0, 1, 100);
+      context!.fillRect(0, 0, 1, 32);
 
       const skyMap = new THREE.CanvasTexture(canvas);
       skyMap.colorSpace = THREE.SRGBColorSpace;
 
+      const boxSizeMax = Math.max(1000, 600, 1000); // 1000
+      const skyRadius = boxSizeMax * 1.5; // 1500
+
       const sky = new THREE.Mesh(
-        new THREE.SphereGeometry(1000),
-        new THREE.MeshBasicNodeMaterial({ map: skyMap, side: THREE.BackSide })
+        new THREE.SphereGeometry(skyRadius),
+        new THREE.MeshBasicNodeMaterial({
+          map: skyMap,
+          side: THREE.BackSide,
+          depthWrite: false, // 背景として機能させる
+          depthTest: false, // 常に背景として描画
+        })
       );
       this.scene.add(sky);
     }
