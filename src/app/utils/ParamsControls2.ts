@@ -53,6 +53,62 @@ export class ParamsControls2 {
       .onChange((value: number) => {
         this.cloudConfig2.aa.value = value;
       });
+
+    cloudSettingsFolder
+      .add(this.cloudConfig2.osa, "value", 0, 1, 0.01)
+      .name("Cloud OSAmbient")
+      .onChange((value: number) => {
+        this.cloudConfig2.osa.value = value;
+      });
+    cloudSettingsFolder
+      .add(this.cloudConfig2.csi, "value", 0, 1, 0.1)
+      .name("Cloud Inside Scale")
+      .onChange((value: number) => {
+        this.cloudConfig2.csi.value = value;
+      });
+    cloudSettingsFolder
+      .add(this.cloudConfig2.cse, "value", 0, 10, 0.1)
+      .name("Cloud Outside Scale")
+      .onChange((value: number) => {
+        this.cloudConfig2.cse.value = value;
+      });
+    cloudSettingsFolder
+      .add(this.cloudConfig2.ins, "value", 0, 1, 0.1)
+      .name("Cloud Inside Strength")
+      .onChange((value: number) => {
+        this.cloudConfig2.ins.value = value;
+      });
+    cloudSettingsFolder
+      .add(this.cloudConfig2.outs, "value", 0, 1, 0.1)
+      .name("Cloud Outside Strength")
+      .onChange((value: number) => {
+        this.cloudConfig2.outs.value = value;
+      });
+    cloudSettingsFolder
+      .add(this.cloudConfig2.ivo, "value", 0, 1, 0.1)
+      .name("Cloud Inside/Outside Volume")
+      .onChange((value: number) => {
+        this.cloudConfig2.ivo.value = value;
+      });
+
+    cloudSettingsFolder
+      .add(this.cloudConfig2.b, "value", 0, 10, 0.1)
+      .name("Cloud Brightness")
+      .onChange((value: number) => {
+        this.cloudConfig2.b.value = value;
+      });
+    cloudSettingsFolder
+      .add(this.cloudConfig2.amin, "value", 0, 1, 0.1)
+      .name("Cloud Ambient Min")
+      .onChange((value: number) => {
+        this.cloudConfig2.amin.value = value;
+      });
+    cloudSettingsFolder
+      .add(this.cloudConfig2.ac, "value", 0, 1, 0.1)
+      .name("Cloud Ambient Color")
+      .onChange((value: number) => {
+        this.cloudConfig2.ac.value = value;
+      });
     cloudTextureFolder
       .add(this.cloudConfig2.textureFrequencies.freq1_perlin, "value", 0, 50, 1)
       .onChange((value: number) => {

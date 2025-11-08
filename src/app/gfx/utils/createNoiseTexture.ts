@@ -77,7 +77,10 @@ export function createNoiseTexture(
     const perlin_ratio = freq1_perlin_ratio;
     const worley_ratio = float(1.0).sub(freq1_perlin_ratio);
 
-    const r = perlin.mul(perlin_ratio).add(worley.mul(worley_ratio)); // 大きな構造
+    // const r = perlin.mul(perlin_ratio).add(worley.mul(worley_ratio)); // 大きな構造
+    const r = float(1.0).sub(
+      perlin.mul(perlin_ratio).add(worley.mul(worley_ratio))
+    ); // 大きな構造
     const g = mx_worley_noise_float(pt.mul(freq2)); // 中規模の詳細
     const b = mx_worley_noise_float(pt.mul(freq3)); // 小さな詳細
     const a = mx_worley_noise_float(pt.mul(freq4)); // 最細部
