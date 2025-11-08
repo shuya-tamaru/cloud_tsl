@@ -2,12 +2,13 @@ import { CameraManager } from "./core/CameraManager";
 import { ControlsManager } from "./core/ControlManager";
 import { RendererManager } from "./core/RendererManager";
 import { SceneManager } from "./core/SceneManager";
-import { Cloud } from "./gfx/Cloud";
+// import { Cloud } from "./gfx/Cloud";
 import { Cloud2 } from "./gfx/Cloud2";
-import { CloudConfig } from "./gfx/cloudConfig";
+// import { CloudConfig } from "./gfx/cloudConfig";
 import { CloudConfig2 } from "./gfx/cloudConfig2";
 import { Sun } from "./gfx/Sun";
-import { ParamsControls } from "./utils/ParamsControls";
+// import { ParamsControls } from "./utils/ParamsControls";
+import { ParamsControls2 } from "./utils/ParamsControls2";
 
 export class App {
   private sceneManager!: SceneManager;
@@ -21,10 +22,11 @@ export class App {
   private height: number;
   private aspect: number;
 
-  private cloud!: Cloud;
-  private cloudConfig!: CloudConfig;
+  // private cloud!: Cloud;
+  // private cloudConfig!: CloudConfig;
   private cloud2!: Cloud2;
   private cloudConfig2!: CloudConfig2;
+  private paramsControls2!: ParamsControls2;
   private sun!: Sun;
 
   constructor() {
@@ -50,7 +52,7 @@ export class App {
       this.cameraManager.camera,
       this.rendererManager.renderer.domElement
     );
-    this.cloudConfig = new CloudConfig();
+    // this.cloudConfig = new CloudConfig();
     // this.cloud = new Cloud(
     //   this.sceneManager.scene,
     //   this.rendererManager.renderer,
@@ -62,6 +64,7 @@ export class App {
       this.rendererManager.renderer,
       this.cloudConfig2
     );
+    this.paramsControls2 = new ParamsControls2(this.cloudConfig2, this.cloud2);
     // this.sun = new Sun(this.sceneManager.scene, this.cloudConfig);
 
     // new ParamsControls(this.cloudConfig, this.cloud);

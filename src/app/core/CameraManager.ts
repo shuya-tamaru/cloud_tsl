@@ -18,7 +18,7 @@ export class CameraManager {
     if (isMobile) {
       this.camera.position.set(212, -245, 107.6);
     } else {
-      this.camera.position.set(-1000, 900, -1500);
+      this.camera.position.set(-1000, 200, -1000);
     }
   }
 

@@ -4,6 +4,7 @@ import {
   Fn,
   instanceIndex,
   mx_fractal_noise_float,
+  mx_noise_float,
   mx_worley_noise_float,
   textureStore,
   uvec2,
@@ -34,11 +35,15 @@ export function createWeatherMap(size = 512) {
 
     // const wc0 = mx_noise_float(uv.mul(3)); // clouds probability (red channel)
     // const wc1 = invFractal.mul(invWorley); // clouds probability (green channel)
-    const wc0 = float(1.0).sub(mx_worley_noise_float(uv.mul(3))); //Low freq
-    const wc1 = float(1.0).sub(mx_worley_noise_float(uv.mul(6.0)));
+    // const wc0 = float(1.0).sub(mx_worley_noise_float(uv.mul(5))); //Low freq
+    // const wc1 = float(1.0).sub(mx_worley_noise_float(uv.mul(6.0)));
+    const wc0 = float(1.0).sub(mx_noise_float(uv.mul(1))); //Low freq
+    const wc1 = float(1.0).sub(mx_worley_noise_float(uv.mul(6)));
+    // const wc0 = float(1.0).sub(mx_noise_float(uv.mul(1))); //Low freq
+    // const wc1 = float(1.0).sub(mx_worley_noise_float(uv.mul(2)));
     // const wh = float(1.0);
     // const wd = float(1.0);
-    const wh = float(1.0); // maxheight (blue channel)
+    const wh = float(1); // maxheight (blue channel)
     const wd = float(1.0); // cloud density (alpha channel)
 
     const color = vec4(wc0, wc1, wh, wd);

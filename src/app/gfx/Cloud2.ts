@@ -18,6 +18,9 @@ import {
   vec4,
   texture,
   exp,
+  mix,
+  pow,
+  sqrt,
 } from "three/tsl";
 import { createWeatherMap } from "./utils/createWeatherMap";
 import { createNoiseTexture } from "./utils/createNoiseTexture";
@@ -30,6 +33,7 @@ export class Cloud2 {
 
   private weatherMapTexture!: THREE.StorageTexture;
   private noiseTexture!: THREE.StorageTexture;
+  private noiseTextureLow!: THREE.StorageTexture;
 
   private geometry!: THREE.BoxGeometry;
   private material!: THREE.MeshBasicNodeMaterial;
@@ -45,6 +49,7 @@ export class Cloud2 {
     this.cloudConfig2 = cloudConfig2;
     this.computeWeatherMap();
     this.computeNoiseTexture();
+    this.computeNoiseTextureLow();
     this.createGeometry();
     this.createMaterial();
     this.createMesh();
@@ -95,8 +100,21 @@ export class Cloud2 {
     await this.renderer.computeAsync(compute);
   }
 
+  private async computeNoiseTextureLow() {
+    const { textureSizeLow, textureSlice, textureFrequencies } =
+      this.cloudConfig2;
+    const { compute, storageTexture } = createNoiseTexture(
+      textureSizeLow,
+      textureSlice.x.value,
+      textureFrequencies
+    );
+
+    this.noiseTextureLow = storageTexture;
+    await this.renderer.computeAsync(compute);
+  }
+
   private updateMaterialNode() {
-    const { boxSize, gd, gc, textureSlice } = this.cloudConfig2;
+    const { boxSize, gd, gc, textureSlice, aa } = this.cloudConfig2;
     const cellsX = textureSlice.x.value;
     const cellsY = textureSlice.y.value;
     const slices = cellsX * cellsY;
@@ -186,27 +204,61 @@ export class Cloud2 {
         const sn_g = densitySample.g;
         const sn_b = densitySample.b;
         const sn_a = densitySample.a;
-        const sn_gba = sn_g
-          .mul(0.625)
-          .add(sn_b.mul(0.25))
-          .add(sn_a.mul(0.125))
-          .sub(1);
+        const sn_gba = sn_g.mul(0.625).add(sn_b.mul(0.25)).add(sn_a.mul(0.125));
+
         const sn_sample = remap(sn_r, sn_gba, 1, 0, 1);
-        // SN= SAT (R(SNsample ×SA, 1−gc ×WMc, 1, 0, 1)) ×DA
-        const sn_shape = sn_sample.mul(sa);
-        const cover = float(1.0).sub(gc.mul(wmc));
-        const sn = saturate(remap(sn_shape, cover, 1, 0.0, 1.0)).mul(da);
-        totalDensity.addAssign(sn);
+
+        //low frequency noise
+        //prettier-ignore
+        //@ts-ignore
+        const sn_low_sample = sample3D(this.noiseTextureLow, uvw, slices, cellsX, cellsY);
+        const sn_low_g = sn_low_sample.g;
+        const sn_low_b = sn_low_sample.b;
+        const sn_low_a = sn_low_sample.a;
+        const dnFbm = sn_low_g
+          .mul(0.625)
+          .add(sn_low_b.mul(0.25))
+          .add(sn_low_a.mul(0.125));
+
+        const dn_mod = float(0.35)
+          .mul(exp(float(-1).mul(gc).mul(0.75)))
+          .mul(mix(dnFbm, float(1.0).sub(dnFbm), saturate(float(ph).mul(5))));
+
+        const sa_avil = pow(
+          sa,
+          saturate(remap(ph, 0.65, 0.95, 1, float(1.0).sub(aa.mul(gc))))
+        );
+
+        const sn_nd = saturate(
+          remap(sn_sample.mul(sa_avil), float(1.0).sub(gc.mul(wmc)), 1, 0, 1)
+        );
+        const da_avil = da.mul(
+          mix(1.0, saturate(remap(sqrt(ph), 0.4, 0.95, 1, 0.2)), aa)
+        );
+        const d = saturate(remap(sn_nd, dn_mod, 1, 0, 1)).mul(da_avil);
+
+        totalDensity.addAssign(d);
         dstTraveled.addAssign(stepSize);
-        // color.addAssign(sa);
       });
       const densityPerSample = totalDensity.div(1);
-      const transmittance = exp(densityPerSample.mul(-1.0));
+      const transmittance = exp(densityPerSample.mul(-1));
       const opacity = float(1.0).sub(transmittance);
 
       const col = vec3(1.0);
-      // return vec4(densityPerSample, densityPerSample, densityPerSample, 1.0);
+      // return vec4(col, opacity);
       return vec4(col, opacity);
     })();
+  }
+
+  public async updateTextureParameters() {
+    await this.computeNoiseTexture();
+    await this.computeNoiseTextureLow();
+    this.material.dispose();
+    this.material = new THREE.MeshBasicNodeMaterial({
+      side: THREE.DoubleSide,
+      transparent: true,
+    });
+    this.mesh.material = this.material;
+    this.updateMaterialNode();
   }
 }

@@ -17,6 +17,13 @@ export class SceneManager {
     const context = canvas.getContext("2d");
     if (context) {
       const gradient = context!.createLinearGradient(0, 0, 0, 32);
+      // gradient.addColorStop(0.0, "#FFB6B6"); // 明るい赤（上部）
+      // gradient.addColorStop(0.5, "#FF7F7F"); // 中間
+      // gradient.addColorStop(1.0, "#C94A4A"); // 赤（下部）
+      // gradient.addColorStop(0.0, "#87CEEB"); // 明るい空色（上部）
+      // gradient.addColorStop(0.5, "#5B9BD5"); // 中間
+      // gradient.addColorStop(1.0, "#4682B4"); // 青（下部）
+
       gradient.addColorStop(0.0, "#87CEEB"); // 明るい空色（上部）
       gradient.addColorStop(0.5, "#5B9BD5"); // 中間
       gradient.addColorStop(1.0, "#4682B4"); // 青（下部）
