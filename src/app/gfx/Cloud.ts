@@ -1,245 +1,271 @@
-// import {
-//   vec3,
-//   float,
-//   Fn,
-//   vec4,
-//   cameraPosition,
-//   normalize,
-//   positionWorld,
-//   modelWorldMatrixInverse,
-//   min,
-//   max,
-//   If,
-//   Loop,
-//   exp,
-//   clamp,
-//   dot,
-//   pow,
-//   PI,
-// } from "three/tsl";
-// import * as THREE from "three/webgpu";
-// import { createNoiseTexture } from "./utils/createNoiseTexture";
-// import { sample3D } from "./utils/sample3D";
-// import { CloudConfig } from "./cloudConfig";
+import * as THREE from "three/webgpu";
+import { CloudConfig } from "./cloudConfig";
+import {
+  cameraPosition,
+  float,
+  Fn,
+  If,
+  Loop,
+  max,
+  modelWorldMatrixInverse,
+  normalize,
+  positionWorld,
+  vec3,
+  vec4,
+  exp,
+  dot,
+  abs,
+} from "three/tsl";
+import { createWeatherMap } from "./utils/createWeatherMap";
+import { createNoiseTexture } from "./utils/createNoiseTexture";
+import { calculateBoxDistance } from "./utils/calculateBoxDistance";
+import { calculateDensity } from "./utils/calculateDensity";
+import { calculateISO } from "./utils/calculateISO";
+import { calculateOSAmbient } from "./utils/calculateOSAmbient";
 
-// export class Cloud {
-//   private scene: THREE.Scene;
-//   private renderer!: THREE.WebGPURenderer;
+export class Cloud {
+  private scene: THREE.Scene;
+  private renderer: THREE.WebGPURenderer;
+  private cloudConfig: CloudConfig;
 
-//   private geometry!: THREE.PlaneGeometry;
-//   private material!: THREE.MeshBasicNodeMaterial;
-//   private mesh!: THREE.Mesh;
+  private weatherMapTexture!: THREE.StorageTexture;
+  private noiseTexture!: THREE.StorageTexture;
+  private noiseTextureLow!: THREE.StorageTexture;
 
-//   private cloudConfig!: CloudConfig;
+  private geometry!: THREE.BoxGeometry;
+  private material!: THREE.MeshBasicNodeMaterial;
+  private mesh!: THREE.Mesh;
 
-//   private storageTexture!: THREE.StorageTexture;
+  constructor(
+    scene: THREE.Scene,
+    renderer: THREE.WebGPURenderer,
+    cloudConfig: CloudConfig
+  ) {
+    this.scene = scene;
+    this.renderer = renderer;
+    this.cloudConfig = cloudConfig;
+    this.computeWeatherMap();
+    this.computeNoiseTexture();
+    this.computeNoiseTextureLow();
+    this.createGeometry();
+    this.createMaterial();
+    this.createMesh();
+  }
 
-//   constructor(
-//     scene: THREE.Scene,
-//     renderer: THREE.WebGPURenderer,
-//     cloudConfig: CloudConfig
-//   ) {
-//     this.scene = scene;
-//     this.renderer = renderer;
-//     this.cloudConfig = cloudConfig;
-//     this.computeNoiseTexture();
-//     this.createGeometry();
-//     this.createMaterial();
-//     this.createMesh();
-//     this.updateMaterialNode();
-//   }
+  private createGeometry() {
+    const { boxSize } = this.cloudConfig;
+    this.geometry = new THREE.BoxGeometry(
+      boxSize.x.value,
+      boxSize.y.value,
+      boxSize.z.value
+    );
+  }
 
-//   private createGeometry() {
-//     this.geometry = new THREE.BoxGeometry(
-//       this.cloudConfig.boxSize.x.value,
-//       this.cloudConfig.boxSize.y.value,
-//       this.cloudConfig.boxSize.z.value
-//     );
-//     this.geometry.rotateX(Math.PI / 2);
-//   }
+  private createMaterial() {
+    this.material = new THREE.MeshBasicNodeMaterial({
+      side: THREE.DoubleSide,
+      transparent: true,
+    });
+    this.updateMaterialNode();
+  }
 
-//   private createMaterial() {
-//     this.material = new THREE.MeshBasicNodeMaterial({
-//       side: THREE.DoubleSide,
-//     });
-//   }
+  private createMesh() {
+    this.mesh = new THREE.Mesh(this.geometry, this.material);
+  }
 
-//   private createMesh() {
-//     this.mesh = new THREE.Mesh(this.geometry, this.material);
-//   }
+  public addToScene() {
+    this.scene.add(this.mesh);
+  }
 
-//   public addToScene() {
-//     this.scene.add(this.mesh);
-//   }
+  private async computeWeatherMap() {
+    const { weatherPositionParam, weatherPositionParamLow } = this.cloudConfig;
+    const { compute, storageTexture: weatherMapTexture } = createWeatherMap(
+      512,
+      weatherPositionParam,
+      weatherPositionParamLow
+    );
 
-//   private async computeNoiseTexture() {
-//     const { textureSize, textureSlice, textureFrequencies } = this.cloudConfig;
-//     const { compute, storageTexture } = createNoiseTexture(
-//       textureSize,
-//       textureSlice.x.value,
-//       textureFrequencies
-//     );
+    this.weatherMapTexture = weatherMapTexture;
+    await this.renderer.computeAsync(compute);
+  }
 
-//     this.storageTexture = storageTexture;
-//     await this.renderer.computeAsync(compute);
-//   }
+  private async computeNoiseTexture() {
+    const { textureSize, textureSlice, textureFrequencies } = this.cloudConfig;
+    const { compute, storageTexture } = createNoiseTexture(
+      textureSize,
+      textureSlice.x.value,
+      textureFrequencies
+    );
 
-//   private updateMaterialNode() {
-//     const {
-//       boxSize,
-//       densityScale,
-//       cloudVisibilityThreshold,
-//       intensity,
-//       textureSlice,
-//       cloudColor,
-//       sunDirectionX,
-//       sunDirectionY,
-//       sunDirectionZ,
-//       lightAbsorption,
-//       darknessThreshold,
-//       sunTransScale,
-//       asymmetry,
-//       lightIntensity,
-//     } = this.cloudConfig;
-//     const cellsX = textureSlice.x.value;
-//     const cellsY = textureSlice.y.value;
-//     const slices = cellsX * cellsY;
+    this.noiseTexture = storageTexture;
+    await this.renderer.computeAsync(compute);
+  }
 
-//     this.material.fragmentNode = Fn(() => {
-//       const color = vec4(cloudColor, 1.0).toVar();
-//       const rayOriginWorld = cameraPosition;
-//       const rayDirWorld = normalize(positionWorld.sub(cameraPosition));
+  private async computeNoiseTextureLow() {
+    const { textureSizeLow, textureSlice, textureFrequencies } =
+      this.cloudConfig;
+    const { compute, storageTexture } = createNoiseTexture(
+      textureSizeLow,
+      textureSlice.x.value,
+      textureFrequencies
+    );
 
-//       const invModel = modelWorldMatrixInverse;
-//       const rayOrigin = invModel.mul(vec4(rayOriginWorld, 1.0)).xyz;
-//       const rayDir = normalize(invModel.mul(vec4(rayDirWorld, 0.0)).xyz);
-//       // geometry.rotateX(Math.PI/2)によりY/Zが入れ替わるため、シェーダー内でもY/Zを入れ替える
-//       const boxMin = vec3(
-//         boxSize.x.mul(-0.5),
-//         boxSize.z.mul(-0.5),
-//         boxSize.y.mul(-0.5)
-//       );
-//       const boxMax = vec3(
-//         boxSize.x.mul(0.5),
-//         boxSize.z.mul(0.5),
-//         boxSize.y.mul(0.5)
-//       );
+    this.noiseTextureLow = storageTexture;
+    await this.renderer.computeAsync(compute);
+  }
 
-//       const invDir = vec3(1.0).div(rayDir);
-//       const t0 = boxMin.sub(rayOrigin).mul(invDir);
-//       const t1 = boxMax.sub(rayOrigin).mul(invDir);
-//       const tmin = min(t0, t1);
-//       const tmax = max(t0, t1);
-//       const dstA = max(max(tmin.x, tmin.y), tmin.z);
-//       const dstB = min(min(tmax.x, tmax.y), tmax.z);
+  private updateMaterialNode() {
+    const {
+      boxSize,
+      gd,
+      gc,
+      textureSlice,
+      aa,
+      b,
+      osa,
+      csi,
+      cse,
+      ins,
+      outs,
+      ivo,
+      ac,
+      amin,
+    } = this.cloudConfig;
+    const cellsX = textureSlice.x.value;
+    const cellsY = textureSlice.y.value;
+    const slices = cellsX * cellsY;
 
-//       const dstToBox = max(0.0, dstA);
-//       const dstInsideBox = clamp(dstB.sub(dstToBox), 0.0, 9999.0);
+    this.material.fragmentNode = Fn(() => {
+      const boxMin = vec3(
+        boxSize.x.mul(-0.5),
+        boxSize.y.mul(-0.5),
+        boxSize.z.mul(-0.5)
+      );
+      const boxMax = vec3(
+        boxSize.x.mul(0.5),
+        boxSize.y.mul(0.5),
+        boxSize.z.mul(0.5)
+      );
 
-//       If(dstA.greaterThanEqual(dstB), () => {
-//         color.assign(vec4(0.0));
-//       });
+      const color = vec4(0.0, 0.0, 0.0, 1.0).toVar();
 
-//       //density
-//       const steps = 64;
-//       const dstTraveled = float(0).toVar();
-//       const stepSize = dstInsideBox.div(float(steps));
-//       const totalDensity = float(0.0).toVar();
+      const rayOriginWorld = cameraPosition;
+      const rayDirWorld = normalize(positionWorld.sub(cameraPosition));
+      const invModel = modelWorldMatrixInverse;
+      const rayOriginLocal = invModel.mul(vec4(rayOriginWorld, 1.0)).xyz;
+      const rayDirLocal = normalize(invModel.mul(vec4(rayDirWorld, 0.0)).xyz);
 
-//       //lighting
-//       const sunDirWorld = vec3(sunDirectionX, sunDirectionY, sunDirectionZ);
-//       const toSunDirection = sunDirWorld.negate();
+      //sun
 
-//       const sunSteps = 8;
-//       // geometry.rotateX(Math.PI/2)によりY/Zが入れ替わるため、z方向のサイズを使う
-//       const sunStep = boxSize.z.value / sunSteps;
-//       const densityToSun = float(0.0).toVar();
-//       const lightAccum = float(0.0).toVar();
-//       const g = float(asymmetry); // parameter
-//       const g2 = g.mul(g);
-//       // numerator = (1 - g^2)
-//       const cosTheta = dot(rayDirWorld, sunDirWorld);
-//       const numerator = float(1.0).sub(g2);
-//       const denomBase = float(1.0)
-//         .add(g2)
-//         .sub(cosTheta.mul(g.mul(2.0)));
-//       const eps = float(0.000001);
-//       const denomSafe = max(denomBase, eps);
-//       const denom = pow(denomSafe, float(1.5));
-//       const inv4pi = float(1.0).div(float(4.0).mul(PI));
-//       const hgPhase = inv4pi.mul(numerator.div(denom));
-//       const hgSoft = hgPhase.div(float(1.0).add(hgPhase));
+      const sunDirection = normalize(vec3(0.3, 1.0, 0.2));
+      const sunDirectionLocal = normalize(
+        invModel.mul(vec4(sunDirection, 0.0)).xyz
+      );
+      //sun
 
-//       Loop(steps, () => {
-//         const p = rayOrigin.add(rayDir.mul(dstToBox.add(dstTraveled)));
-//         const uvw = p.sub(boxMin).div(boxMax.sub(boxMin));
+      //@ts-ignore
+      //prettier-ignore
+      const boxDistance = calculateBoxDistance(boxMin, boxMax, rayOriginLocal, rayDirLocal);
+      const dstA = boxDistance.x;
+      const dstB = boxDistance.y;
+      const dstToBox = boxDistance.z;
+      const dstInsideBox = boxDistance.w;
 
-//         //prettier-ignore
-//         //@ts-ignore
-//         const densitySample = sample3D(this.storageTexture, uvw, slices, cellsX, cellsY)
+      If(dstA.greaterThanEqual(dstB), () => {
+        color.assign(vec4(0.0));
+      });
 
-//         const wfbm = densitySample.x
-//           .mul(0.625)
-//           .add(densitySample.y.mul(0.25))
-//           .add(densitySample.z.mul(0.125))
-//           .mul(densityScale)
-//           .toVar();
+      const steps = 16;
+      const dstTraveled = float(0).toVar();
+      const stepSize = dstInsideBox.div(float(steps));
+      const totalDensity = float(0.0).toVar();
+      const accumulatedColor = vec3(0.0).toVar();
 
-//         If(wfbm.greaterThan(cloudVisibilityThreshold), () => {
-//           //shadow
-//           Loop(sunSteps, (i) => {
-//             const pSun = p.add(
-//               toSunDirection.mul(float(sunStep).mul(float(i.i)))
-//             );
-//             const uvwSun = pSun.sub(boxMin).div(boxMax.sub(boxMin));
-//             //prettier-ignore
-//             //@ts-ignore
-//             const densityToSunSample = sample3D(this.storageTexture, uvwSun, slices, cellsX, cellsY)
-//             densityToSun.addAssign(densityToSunSample.x.mul(densityScale));
-//           });
-//           const sunTrans = exp(
-//             densityToSun.mul(float(-1.0).mul(lightAbsorption))
-//           ).mul(sunTransScale);
-//           const shadow = darknessThreshold.add(
-//             sunTrans.mul(float(1.0).sub(darknessThreshold))
-//           );
-//           const powder = exp(wfbm.mul(-2.0));
-//           const scatter = wfbm.mul(hgSoft).mul(shadow).mul(powder);
-//           lightAccum.addAssign(scatter);
+      Loop(steps, () => {
+        //最初のStepでBoxの手前まで行く
+        const p = rayOriginLocal.add(
+          rayDirLocal.mul(dstToBox.add(dstTraveled))
+        );
 
-//           totalDensity.addAssign(wfbm);
-//         });
+        //@ts-ignore
+        //prettier-ignore
+        const result = calculateDensity(p, boxMin, boxMax,  this.weatherMapTexture, gc, gd, this.noiseTexture, slices, cellsX, cellsY, this.noiseTextureLow, aa);
+        const d = result.x;
+        const ph = result.y;
 
-//         dstTraveled.addAssign(stepSize);
-//       });
-//       const densityPerSample = totalDensity.div(intensity);
+        totalDensity.addAssign(d);
+        dstTraveled.addAssign(stepSize);
 
-//       const transmittance = exp(densityPerSample.mul(-1.0));
-//       const opacity = float(1.0).sub(transmittance);
-//       const baseColor = float(1.0).sub(color.mul(transmittance));
-//       const finalColor = baseColor.add(lightAccum.mul(lightIntensity));
-//       return vec4(finalColor, opacity);
-//     })();
-//     this.material.transparent = true;
-//   }
+        If(d.greaterThan(0), () => {
+          //@ts-ignore
+          //prettier-ignore
+          const sunDistance = calculateBoxDistance(boxMin, boxMax, p, sunDirectionLocal);
+          const distanceInsideBoxSun = sunDistance.w;
+          const sunSteps = 8;
+          const sunDstTraveled = float(0).toVar();
+          const stepSizeSun = distanceInsideBoxSun.div(float(sunSteps));
+          const accumulatedSunDensity = float(0).toVar();
 
-//   public updateCloudBoundaryBox() {
-//     this.geometry.dispose();
-//     this.mesh.geometry.dispose();
-//     this.createGeometry();
-//     this.mesh.geometry = this.geometry;
-//     this.updateMaterialNode();
-//   }
+          Loop(sunSteps, () => {
+            const pSun = p.add(sunDirectionLocal.mul(sunDstTraveled));
+            //@ts-ignore
+            //prettier-ignore
+            const sunDensity = calculateDensity(pSun, boxMin, boxMax, this.weatherMapTexture, gc, gd, this.noiseTexture, slices, cellsX, cellsY, this.noiseTextureLow, aa);
+            accumulatedSunDensity.addAssign(sunDensity);
+            sunDstTraveled.addAssign(stepSizeSun);
+          });
+          //sunLight amount
 
-//   public async updateTextureParameters() {
-//     await this.computeNoiseTexture();
+          const e = max(exp(float(-1).mul(b).mul(accumulatedSunDensity)), 0.8);
+          const eClamp = max(e, exp(float(-1).mul(b).mul(ac)));
+          const eAalter = max(d.mul(amin), eClamp);
 
-//     this.material.dispose();
-//     this.material = new THREE.MeshBasicNodeMaterial({
-//       side: THREE.DoubleSide,
-//     });
-//     this.mesh.material = this.material;
+          const dotAngle = dot(
+            normalize(sunDirectionLocal),
+            normalize(rayDirLocal).negate()
+          );
+          const dotAbs = abs(dotAngle);
+          const threshold = 0.9;
+          const angle = max(dotAbs, threshold);
+          //@ts-ignore
+          //prettier-ignore
+          const iso = calculateISO(angle, csi, cse, ins, outs, sunDirectionLocal, rayDirLocal, ivo);
 
-//     this.updateMaterialNode();
-//   }
-// }
+          //@ts-ignore
+          //prettier-ignore
+          const osambient = calculateOSAmbient(d, ph, osa);
+
+          accumulatedColor.addAssign(eAalter.mul(d).mul(iso).mul(osambient));
+        });
+      });
+
+      const densityPerSample = totalDensity;
+      const opacity = float(1.0).sub(exp(densityPerSample.mul(-1.0)));
+
+      // const col = vec3(accumulatedColor);
+      const col = vec3(float(1.0).sub(accumulatedColor));
+
+      return vec4(col, opacity);
+    })();
+  }
+
+  public async updateTextureParameters() {
+    await this.computeNoiseTexture();
+    await this.computeNoiseTextureLow();
+    this.material.dispose();
+    this.material = new THREE.MeshBasicNodeMaterial({
+      side: THREE.DoubleSide,
+      transparent: true,
+    });
+    this.mesh.material = this.material;
+    this.updateMaterialNode();
+  }
+
+  public async updateWeatherPositionParam() {
+    await this.computeWeatherMap();
+    this.updateMaterialNode();
+    this.material.dispose();
+    this.mesh.material = this.material;
+    this.material.needsUpdate = true;
+  }
+}

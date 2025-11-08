@@ -2,13 +2,10 @@ import { CameraManager } from "./core/CameraManager";
 import { ControlsManager } from "./core/ControlManager";
 import { RendererManager } from "./core/RendererManager";
 import { SceneManager } from "./core/SceneManager";
-// import { Cloud } from "./gfx/Cloud";
-import { Cloud2 } from "./gfx/Cloud2";
-// import { CloudConfig } from "./gfx/cloudConfig";
-import { CloudConfig2 } from "./gfx/cloudConfig2";
+import { Cloud } from "./gfx/Cloud";
+import { CloudConfig } from "./gfx/cloudConfig";
 import { Sun } from "./gfx/Sun";
-// import { ParamsControls } from "./utils/ParamsControls";
-import { ParamsControls2 } from "./utils/ParamsControls2";
+import { ParamsControls } from "./utils/ParamsControls";
 
 export class App {
   private sceneManager!: SceneManager;
@@ -24,9 +21,9 @@ export class App {
 
   // private cloud!: Cloud;
   // private cloudConfig!: CloudConfig;
-  private cloud2!: Cloud2;
-  private cloudConfig2!: CloudConfig2;
-  private paramsControls2!: ParamsControls2;
+  private cloud!: Cloud;
+  private cloudConfig!: CloudConfig;
+  private paramsControls!: ParamsControls;
   private sun!: Sun;
 
   constructor() {
@@ -52,27 +49,21 @@ export class App {
       this.cameraManager.camera,
       this.rendererManager.renderer.domElement
     );
-    // this.cloudConfig = new CloudConfig();
-    // this.cloud = new Cloud(
-    //   this.sceneManager.scene,
-    //   this.rendererManager.renderer,
-    //   this.cloudConfig
-    // );
-    this.cloudConfig2 = new CloudConfig2();
-    this.cloud2 = new Cloud2(
+
+    this.cloudConfig = new CloudConfig();
+    this.cloud = new Cloud(
       this.sceneManager.scene,
       this.rendererManager.renderer,
-      this.cloudConfig2
+      this.cloudConfig
     );
-    this.paramsControls2 = new ParamsControls2(this.cloudConfig2, this.cloud2);
+    this.paramsControls = new ParamsControls(this.cloudConfig, this.cloud);
     // this.sun = new Sun(this.sceneManager.scene, this.cloudConfig);
 
     // new ParamsControls(this.cloudConfig, this.cloud);
   }
 
   private addObjectsToScene(): void {
-    // this.cloud.addToScene();
-    this.cloud2.addToScene();
+    this.cloud.addToScene();
     // this.sun.addToScene();
   }
 

@@ -1,19 +1,22 @@
 import {
-  clamp,
   float,
   Fn,
   instanceIndex,
-  mx_fractal_noise_float,
   mx_noise_float,
   mx_worley_noise_float,
   textureStore,
+  uniform,
   uvec2,
   vec2,
   vec4,
 } from "three/tsl";
 import * as THREE from "three/webgpu";
 
-export function createWeatherMap(size = 512) {
+export function createWeatherMap(
+  size = 512,
+  weatherPositionParam = uniform(5),
+  weatherPositionParamLow = uniform(6)
+) {
   const storageTexture = new THREE.StorageTexture(size, size);
   storageTexture.minFilter = THREE.LinearFilter;
   storageTexture.magFilter = THREE.LinearFilter;
@@ -30,21 +33,12 @@ export function createWeatherMap(size = 512) {
     const indexUV = uvec2(posX, posY);
     const uv = vec2(float(posX).div(size), float(posY).div(size));
 
-    const invFractal = clamp(mx_fractal_noise_float(uv.mul(20.0)), 0.0, 1.0);
-    const invWorley = clamp(mx_worley_noise_float(uv.mul(10.0)), 0.0, 1.0);
-
-    // const wc0 = mx_noise_float(uv.mul(3)); // clouds probability (red channel)
-    // const wc1 = invFractal.mul(invWorley); // clouds probability (green channel)
-    // const wc0 = float(1.0).sub(mx_worley_noise_float(uv.mul(5))); //Low freq
-    // const wc1 = float(1.0).sub(mx_worley_noise_float(uv.mul(6.0)));
-    const wc0 = float(1.0).sub(mx_noise_float(uv.mul(1))); //Low freq
-    const wc1 = float(1.0).sub(mx_worley_noise_float(uv.mul(6)));
-    // const wc0 = float(1.0).sub(mx_noise_float(uv.mul(1))); //Low freq
-    // const wc1 = float(1.0).sub(mx_worley_noise_float(uv.mul(2)));
-    // const wh = float(1.0);
-    // const wd = float(1.0);
-    const wh = float(1); // maxheight (blue channel)
-    const wd = float(1.0); // cloud density (alpha channel)
+    const wc0 = float(1.0).sub(mx_noise_float(uv.mul(weatherPositionParam)));
+    const wc1 = float(1.0).sub(
+      mx_worley_noise_float(uv.mul(weatherPositionParamLow))
+    );
+    const wh = float(1.0);
+    const wd = float(1.0);
 
     const color = vec4(wc0, wc1, wh, wd);
     textureStore(storageTexture, indexUV, color).toWriteOnly();
