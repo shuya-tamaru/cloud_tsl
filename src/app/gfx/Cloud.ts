@@ -175,7 +175,7 @@ export class Cloud {
         color.assign(vec4(0.0));
       });
 
-      const steps = 16;
+      const steps = 32;
       const dstTraveled = float(0).toVar();
       const stepSize = dstInsideBox.div(float(steps));
       const totalDensity = float(0.0).toVar();
